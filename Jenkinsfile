@@ -6,14 +6,13 @@ pipeline {
         NEXUS_URL = "http://172.31.16.65:8081"
         NEXUS_REPO = "node-app-repo"
         GIT_URL = "https://github.com/tirthmodi2904/node-multi-env-app.git"
-        BRANCH = "develop"
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git url: "${GIT_URL}", branch: "${BRANCH}"
+                checkout scm
             }
         }
 
@@ -72,42 +71,103 @@ pipeline {
             }
         }
 
+        // =========================
+        // DEV DEPLOYMENT (AUTO)
+        // =========================
         stage('Deploy to DEV') {
-    steps {
-        sshagent(['ec2-ssh-key']) {
-            withCredentials([usernamePassword(
-                credentialsId: 'nexuslogin',
-                usernameVariable: 'NEXUS_USER',
-                passwordVariable: 'NEXUS_PASS'
-            )]) {
-                sh '''
-                curl -u $NEXUS_USER:$NEXUS_PASS \
-                -o app.tar.gz \
-                http://172.31.16.65:8081/repository/node-app-repo/node-multi-env-app-${BUILD_NUMBER}.tar.gz
-
-                scp -o StrictHostKeyChecking=no app.tar.gz ec2-user@98.81.247.44:/var/www/nodeapp/
-
-                ssh -o StrictHostKeyChecking=no ec2-user@98.81.247.44 "
-                    cd /var/www/nodeapp &&
-                    tar -xzf app.tar.gz &&
-                    npm install &&
-                    pm2 delete nodeapp || true &&
-                    APP_ENV=dev pm2 start app.js --name nodeapp
-                "
-                '''
+            when {
+                branch 'develop'
+            }
+            steps {
+                sshagent(['ec2-ssh-key']) {
+                    deployApp("98.81.247.44", "dev")
+                }
             }
         }
-    }
-}
 
+        // =========================
+        // STAGE DEPLOYMENT (MANUAL)
+        // =========================
+        stage('Approval for STAGE') {
+            when {
+                branch 'stage'
+            }
+            steps {
+                input message: "Deploy to STAGE environment?"
+            }
+        }
+
+        stage('Deploy to STAGE') {
+            when {
+                branch 'stage'
+            }
+            steps {
+                sshagent(['ec2-ssh-key']) {
+                    deployApp("54.164.129.101", "stage")
+                }
+            }
+        }
+
+        // =========================
+        // PROD DEPLOYMENT (MANUAL)
+        // =========================
+        stage('Approval for PROD') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: "Deploy to PRODUCTION environment?"
+            }
+        }
+
+        stage('Deploy to PROD') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sshagent(['ec2-ssh-key']) {
+                    deployApp("54.167.41.242", "prod")
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'DEV DEPLOYMENT SUCCESS'
+            echo "PIPELINE COMPLETED SUCCESSFULLY"
         }
         failure {
-            echo 'PIPELINE FAILED'
+            echo "PIPELINE FAILED"
         }
+    }
+}
+
+
+// ========================================
+// REUSABLE DEPLOYMENT FUNCTION
+// ========================================
+def deployApp(serverIp, envName) {
+
+    withCredentials([usernamePassword(
+        credentialsId: 'nexuslogin',
+        usernameVariable: 'NEXUS_USER',
+        passwordVariable: 'NEXUS_PASS'
+    )]) {
+
+        sh """
+        curl -u $NEXUS_USER:$NEXUS_PASS \
+        -o app.tar.gz \
+        http://172.31.16.65:8081/repository/node-app-repo/node-multi-env-app-${BUILD_NUMBER}.tar.gz
+
+        scp -o StrictHostKeyChecking=no app.tar.gz ec2-user@${serverIp}:/var/www/nodeapp/
+
+        ssh -o StrictHostKeyChecking=no ec2-user@${serverIp} "
+            cd /var/www/nodeapp &&
+            tar -xzf app.tar.gz &&
+            npm install &&
+            pm2 delete nodeapp || true &&
+            APP_ENV=${envName} pm2 start app.js --name nodeapp
+        "
+        """
     }
 }
