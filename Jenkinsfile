@@ -7,12 +7,12 @@ pipeline {
         NEXUS_REPO = "node-app-repo"
     }
 
-    stage('Checkout Code') {
-    steps {
-        git branch: 'develop',
-            url: 'https://github.com/tirthmodi2904/node-multi-env-app.git'
+        stage('Checkout Code') {
+        steps {
+            git branch: 'develop',
+                url: 'https://github.com/tirthmodi2904/node-multi-env-app.git'
+        }
     }
-}
 
 
         stage('Install Dependencies') {
@@ -128,4 +128,3 @@ pipeline {
             echo 'PIPELINE FAILED'
         }
     }
-}
