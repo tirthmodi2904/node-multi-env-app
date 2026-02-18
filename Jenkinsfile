@@ -7,14 +7,13 @@ pipeline {
         NEXUS_REPO = "node-app-repo"
     }
 
-    stages {
+    stage('Checkout Code') {
+    steps {
+        git branch: 'develop',
+            url: 'https://github.com/tirthmodi2904/node-multi-env-app.git'
+    }
+}
 
-        stage('Checkout Code') {
-            steps {
-                git branch: "${env.BRANCH_NAME}",
-                    url: 'https://github.com/tirthmodi2904/node-multi-env-app.git'
-            }
-        }
 
         stage('Install Dependencies') {
             steps {
