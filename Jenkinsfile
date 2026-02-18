@@ -5,15 +5,17 @@ pipeline {
         APP_NAME = "node-multi-env-app"
         NEXUS_URL = "http://172.31.16.65:8081"
         NEXUS_REPO = "node-app-repo"
+        GIT_URL = "https://github.com/tirthmodi2904/node-multi-env-app.git"
+        BRANCH = "develop"
     }
+
+    stages {
 
         stage('Checkout Code') {
-        steps {
-            git branch: 'develop',
-                url: 'https://github.com/tirthmodi2904/node-multi-env-app.git'
+            steps {
+                git url: "${GIT_URL}", branch: "${BRANCH}"
+            }
         }
-    }
-
 
         stage('Install Dependencies') {
             steps {
@@ -70,51 +72,28 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to DEV') {
             steps {
-                script {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexuslogin',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh """
+                    curl -u $NEXUS_USER:$NEXUS_PASS \
+                    -o app.tar.gz \
+                    ${NEXUS_URL}/repository/${NEXUS_REPO}/${APP_NAME}-${BUILD_NUMBER}.tar.gz
 
-                    def SERVER_IP = ""
-                    def APP_ENV = ""
+                    scp -o StrictHostKeyChecking=no app.tar.gz ec2-user@98.81.247.44:/var/www/nodeapp/
 
-                    if (env.BRANCH_NAME == "develop") {
-                        SERVER_IP = "98.81.247.44"
-                        APP_ENV = "dev"
-                    }
-                    else if (env.BRANCH_NAME == "stage") {
-                        SERVER_IP = "54.164.129.101"
-                        APP_ENV = "stage"
-                    }
-                    else if (env.BRANCH_NAME == "main") {
-                        SERVER_IP = "54.167.41.242"
-                        APP_ENV = "prod"
-                    }
-                    else {
-                        error "Unknown branch for deployment"
-                    }
-
-                    withCredentials([usernamePassword(
-                        credentialsId: 'nexuslogin',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )]) {
-
-                        sh """
-                        curl -u $NEXUS_USER:$NEXUS_PASS \
-                        -o app.tar.gz \
-                        ${NEXUS_URL}/repository/${NEXUS_REPO}/${APP_NAME}-${BUILD_NUMBER}.tar.gz
-
-                        scp -o StrictHostKeyChecking=no app.tar.gz ec2-user@$SERVER_IP:/var/www/nodeapp/
-
-                        ssh -o StrictHostKeyChecking=no ec2-user@$SERVER_IP "
-                            cd /var/www/nodeapp &&
-                            tar -xzf app.tar.gz &&
-                            npm install &&
-                            pm2 delete nodeapp || true &&
-                            APP_ENV=${APP_ENV} pm2 start app.js --name nodeapp
-                        "
-                        """
-                    }
+                    ssh -o StrictHostKeyChecking=no ec2-user@98.81.247.44 "
+                        cd /var/www/nodeapp &&
+                        tar -xzf app.tar.gz &&
+                        npm install &&
+                        pm2 delete nodeapp || true &&
+                        APP_ENV=dev pm2 start app.js --name nodeapp
+                    "
+                    """
                 }
             }
         }
@@ -122,9 +101,10 @@ pipeline {
 
     post {
         success {
-            echo 'MULTI ENVIRONMENT PIPELINE SUCCESS'
+            echo 'DEV DEPLOYMENT SUCCESS'
         }
         failure {
             echo 'PIPELINE FAILED'
         }
     }
+}
