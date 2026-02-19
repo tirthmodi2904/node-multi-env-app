@@ -126,7 +126,7 @@ pipeline {
             }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("54.167.41.242", "prod")
+                    deployApp("54.83.115.62", "prod")
                 }
             }
         }
