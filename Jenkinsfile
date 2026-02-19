@@ -2,10 +2,12 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "node-multi-env-app"
-        NEXUS_URL = "http://172.31.16.65:8081"
+        APP_NAME   = "node-multi-env-app"
+        NEXUS_URL  = "http://172.31.16.65:8081"
         NEXUS_REPO = "node-app-repo"
-        GIT_URL = "https://github.com/tirthmodi2904/node-multi-env-app.git"
+        DEV_IP     = "100.48.94.29"
+        STAGE_IP   = "54.234.182.140"
+        PROD_IP    = "54.83.115.62"
     }
 
     stages {
@@ -40,7 +42,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Quality Gate') {
+        stage('Quality Gate') {
             steps {
                 timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -71,62 +73,47 @@ pipeline {
             }
         }
 
-        // =========================
-        // DEV DEPLOYMENT (AUTO)
-        // =========================
+        // ============================
+        // DEV DEPLOY (AUTO)
+        // ============================
         stage('Deploy to DEV') {
-            when {
-                branch 'develop'
-            }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("100.48.94.29", "dev")
+                    deployApp(env.DEV_IP, "dev")
                 }
             }
         }
 
-        // =========================
-        // STAGE DEPLOYMENT (MANUAL)
-        // =========================
-        stage('Approval for STAGE') {
-            when {
-                branch 'stage'
-            }
+        // ============================
+        // STAGE APPROVAL + DEPLOY
+        // ============================
+        stage('Approve STAGE') {
             steps {
-                input message: "Deploy to STAGE environment?"
+                input message: "Promote build to STAGE environment?"
             }
         }
 
         stage('Deploy to STAGE') {
-            when {
-                branch 'stage'
-            }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("54.234.182.140", "stage")
+                    deployApp(env.STAGE_IP, "stage")
                 }
             }
         }
 
-        // =========================
-        // PROD DEPLOYMENT (MANUAL)
-        // =========================
-        stage('Approval for PROD') {
-            when {
-                branch 'main'
-            }
+        // ============================
+        // PROD APPROVAL + DEPLOY
+        // ============================
+        stage('Approve PROD') {
             steps {
-                input message: "Deploy to PRODUCTION environment?"
+                input message: "Promote build to PRODUCTION environment?"
             }
         }
 
         stage('Deploy to PROD') {
-            when {
-                branch 'main'
-            }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("54.83.115.62", "prod")
+                    deployApp(env.PROD_IP, "prod")
                 }
             }
         }
@@ -134,7 +121,7 @@ pipeline {
 
     post {
         success {
-            echo "PIPELINE COMPLETED SUCCESSFULLY"
+            echo "FULL ENVIRONMENT PROMOTION COMPLETED SUCCESSFULLY"
         }
         failure {
             echo "PIPELINE FAILED"
@@ -143,9 +130,9 @@ pipeline {
 }
 
 
-// ========================================
-// REUSABLE DEPLOYMENT FUNCTION
-// ========================================
+// ======================================
+// COMMON DEPLOYMENT FUNCTION
+// ======================================
 def deployApp(serverIp, envName) {
 
     withCredentials([usernamePassword(
