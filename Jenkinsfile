@@ -80,7 +80,7 @@ pipeline {
             }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("98.81.247.44", "dev")
+                    deployApp("100.48.94.29", "dev")
                 }
             }
         }
@@ -103,7 +103,7 @@ pipeline {
             }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    deployApp("54.164.129.101", "stage")
+                    deployApp("54.234.182.140", "stage")
                 }
             }
         }
