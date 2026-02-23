@@ -5,9 +5,9 @@ pipeline {
         APP_NAME   = "node-multi-env-app"
         NEXUS_URL  = "http://172.31.16.65:8081"
         NEXUS_REPO = "node-app-repo"
-        DEV_IP     = "100.48.94.29"
-        STAGE_IP   = "54.234.182.140"
-        PROD_IP    = "54.83.115.62"
+        DEV_IP     = "3.84.97.50"
+        STAGE_IP   = "54.226.211.233"
+        PROD_IP    = "54.166.187.65"
     }
 
     stages {
@@ -73,9 +73,8 @@ pipeline {
             }
         }
 
-        // ============================
         // DEV DEPLOY (AUTO)
-        // ============================
+
         stage('Deploy to DEV') {
             steps {
                 sshagent(['ec2-ssh-key']) {
@@ -84,9 +83,8 @@ pipeline {
             }
         }
 
-        // ============================
         // STAGE APPROVAL + DEPLOY
-        // ============================
+
         stage('Approve STAGE') {
             steps {
                 input message: "Promote build to STAGE environment?"
@@ -101,9 +99,7 @@ pipeline {
             }
         }
 
-        // ============================
         // PROD APPROVAL + DEPLOY
-        // ============================
         stage('Approve PROD') {
             steps {
                 input message: "Promote build to PRODUCTION environment?"
@@ -129,10 +125,8 @@ pipeline {
     }
 }
 
-
-// ======================================
 // COMMON DEPLOYMENT FUNCTION
-// ======================================
+
 def deployApp(serverIp, envName) {
 
     withCredentials([usernamePassword(
