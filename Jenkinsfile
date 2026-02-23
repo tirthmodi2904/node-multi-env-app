@@ -57,6 +57,8 @@ pipeline {
             }
         }
 
+        // UPLOAD TO NEXUS (INSIDE BUILD FOLDER)
+
         stage('Upload Artifact to Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -67,14 +69,14 @@ pipeline {
                     sh """
                     curl -u $NEXUS_USER:$NEXUS_PASS \
                     --upload-file app.tar.gz \
-                    ${NEXUS_URL}/repository/${NEXUS_REPO}/${APP_NAME}-${BUILD_NUMBER}.tar.gz
+                    ${NEXUS_URL}/repository/${NEXUS_REPO}/${BUILD_NUMBER}/${APP_NAME}-${BUILD_NUMBER}.tar.gz
                     """
                 }
             }
         }
 
-        // DEV DEPLOY (AUTO)
-
+        // DEPLOY TO DEV (AUTO)
+        
         stage('Deploy to DEV') {
             steps {
                 sshagent(['ec2-ssh-key']) {
@@ -83,8 +85,9 @@ pipeline {
             }
         }
 
-        // STAGE APPROVAL + DEPLOY
-
+        
+        // APPROVE + DEPLOY STAGE
+        
         stage('Approve STAGE') {
             steps {
                 input message: "Promote build to STAGE environment?"
@@ -99,7 +102,9 @@ pipeline {
             }
         }
 
-        // PROD APPROVAL + DEPLOY
+        
+        // APPROVE + DEPLOY PROD
+        
         stage('Approve PROD') {
             steps {
                 input message: "Promote build to PRODUCTION environment?"
@@ -125,7 +130,9 @@ pipeline {
     }
 }
 
-// COMMON DEPLOYMENT FUNCTION
+
+
+// COMMON DEPLOY FUNCTION (DOWNLOAD FROM FOLDER)
 
 def deployApp(serverIp, envName) {
 
@@ -138,7 +145,7 @@ def deployApp(serverIp, envName) {
         sh """
         curl -u $NEXUS_USER:$NEXUS_PASS \
         -o app.tar.gz \
-        http://172.31.16.65:8081/repository/node-app-repo/node-multi-env-app-${BUILD_NUMBER}.tar.gz
+        ${NEXUS_URL}/repository/${NEXUS_REPO}/${BUILD_NUMBER}/${APP_NAME}-${BUILD_NUMBER}.tar.gz
 
         scp -o StrictHostKeyChecking=no app.tar.gz ec2-user@${serverIp}:/var/www/nodeapp/
 
