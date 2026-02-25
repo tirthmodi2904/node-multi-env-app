@@ -5,9 +5,9 @@ pipeline {
         APP_NAME   = "node-multi-env-app"
         NEXUS_URL  = "http://172.31.16.65:8081"
         NEXUS_REPO = "node-app-repo"
-        DEV_IP     = "3.84.97.50"
-        STAGE_IP   = "54.226.211.233"
-        PROD_IP    = "54.166.187.65"
+        DEV_IP     = "100.53.236.187"
+        STAGE_IP   = "3.95.61.148"
+        PROD_IP    = "54.164.74.24"
     }
 
     stages {
